@@ -1,0 +1,190 @@
+{
+  "design_system": {
+    "identity": {
+      "name": "E1: The Anti-AI Designer",
+      "philosophy": "Organic Intelligence - Merging high-tech utility with natural, earthy warmth.",
+      "principles": [
+        "Fusion over Imitation: Mix Swiss precision with Organic warmth.",
+        "Emotion First: Every interaction should feel calm and intelligent.",
+        "Content is King: Typography drives the hierarchy.",
+        "Negative Space: Generous breathing room (2x standard).",
+        "Contrast: High contrast for accessibility and visual impact."
+      ]
+    },
+    "typography": {
+      "font_family": {
+        "headings": "Outfit, sans-serif",
+        "body": "Manrope, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "weights": {
+        "headings": "600 (SemiBold) or 300 (Light) - Avoid standard Bold",
+        "body": "400 (Regular), 500 (Medium)"
+      },
+      "scale": {
+        "h1": "text-5xl md:text-7xl tracking-tight leading-none",
+        "h2": "text-4xl md:text-5xl tracking-tight",
+        "h3": "text-2xl md:text-3xl tracking-normal",
+        "body_lg": "text-lg leading-relaxed",
+        "body_base": "text-base leading-relaxed",
+        "caption": "text-sm tracking-wide uppercase"
+      },
+      "installation": "Import fonts via Google Fonts in index.css: @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');"
+    },
+    "colors": {
+      "palette": {
+        "primary": {
+          "DEFAULT": "#0F2922",
+          "foreground": "#FFFFFF",
+          "description": "Deep Evergreen - Authority, Nature, Intelligence"
+        },
+        "secondary": {
+          "DEFAULT": "#C66B54",
+          "foreground": "#FFFFFF",
+          "description": "Terracotta/Clay - Warmth, Human touch"
+        },
+        "accent": {
+          "DEFAULT": "#E2E8E4",
+          "foreground": "#0F2922",
+          "description": "Sage Green - Soft backgrounds, subtle highlights"
+        },
+        "background": {
+          "light": "#F9F9F7",
+          "dark": "#0A0F0D",
+          "description": "Bone White (Light) / Deep Moss (Dark)"
+        },
+        "surface": {
+          "light": "#FFFFFF",
+          "dark": "#151A18",
+          "description": "Cards and panels"
+        },
+        "muted": {
+          "DEFAULT": "#F2F0E9",
+          "foreground": "#6B7280"
+        },
+        "border": {
+          "light": "#E5E5E0",
+          "dark": "#2A3330"
+        }
+      },
+      "usage_rules": [
+        "Never use pure black (#000000). Use #0A0F0D.",
+        "Never use pure white (#FFFFFF) for main backgrounds. Use #F9F9F7.",
+        "Primary color (#0F2922) is for primary actions and User chat bubbles.",
+        "Secondary color (#C66B54) is for accents, notifications, and 'spark' moments.",
+        "AI Chat bubbles should be Muted (#F2F0E9) with dark text."
+      ]
+    },
+    "layout": {
+      "spacing": {
+        "base": "Use Tailwind spacing scale but 2x standard (e.g., p-8 instead of p-4).",
+        "container_padding": "px-6 md:px-12 lg:px-24",
+        "section_gap": "gap-16 md:gap-32"
+      },
+      "grid_system": {
+        "marketing": "Mode A: Tetris Grid (Asymmetrical, 12 cols)",
+        "dashboard": "Mode B: High Density Grid (Compact, 4 cols)",
+        "chat": "Central focused column (max-w-3xl) with floating sidebar"
+      },
+      "radius": {
+        "default": "rounded-xl",
+        "buttons": "rounded-full",
+        "cards": "rounded-2xl"
+      }
+    },
+    "components": {
+      "buttons": {
+        "style": "Pill-shaped (rounded-full).",
+        "animation": "Hover: scale-105 transition-transform duration-200. Active: scale-95.",
+        "shadow": "Subtle shadow-md on hover only."
+      },
+      "cards": {
+        "style": "Flat, 1px border (border-border), no shadow by default.",
+        "hover": "Hover: border-primary/20 shadow-lg transition-all duration-300."
+      },
+      "inputs": {
+        "style": "Minimalist. bg-transparent border-b border-input focus:border-primary focus:ring-0 rounded-none px-0 py-2.",
+        "chat_input": "Pill-shaped container, bg-white/50 backdrop-blur-md border border-border shadow-sm."
+      },
+      "chat_bubbles": {
+        "user": "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm",
+        "ai": "bg-muted text-foreground rounded-2xl rounded-tl-sm",
+        "system": "text-xs text-muted-foreground text-center my-4 uppercase tracking-widest"
+      }
+    },
+    "visual_enhancers": {
+      "texture": "Add a subtle noise texture overlay to the body background (opacity 0.03).",
+      "glassmorphism": "Use backdrop-blur-xl bg-white/70 for sticky headers and sidebars.",
+      "gradients": "NO full-screen gradients. Use subtle mesh gradients in hero sections only (Sage to Bone).",
+      "icons": "Phosphor Icons (Regular weight for UI, Duotone for empty states)."
+    },
+    "motion": {
+      "library": "framer-motion",
+      "transitions": {
+        "page": "opacity: 0 -> 1, y: 20 -> 0 (duration 0.4s ease-out)",
+        "chat_message": "scale: 0.9 -> 1, opacity: 0 -> 1 (spring stiffness 300, damping 30)",
+        "hover": "duration 0.2s ease-out"
+      }
+    },
+    "accessibility": {
+      "contrast": "Ensure 4.5:1 contrast ratio for text.",
+      "focus_states": "Visible ring-2 ring-offset-2 ring-primary.",
+      "reduced_motion": "Respect prefers-reduced-motion media query."
+    },
+    "localization": {
+      "language": "es (Spanish)",
+      "formatting": "Use Spanish date/number formats.",
+      "labels": {
+        "login": "Iniciar Sesión",
+        "register": "Registrarse",
+        "logout": "Cerrar Sesión",
+        "profile": "Perfil",
+        "settings": "Configuración",
+        "chat_placeholder": "Escribe un mensaje...",
+        "system_prompt_label": "Prompt del Sistema"
+      }
+    },
+    "assets": {
+      "images": {
+        "hero_abstract": {
+          "url": "https://images.unsplash.com/photo-1759157273068-42e6d441f772?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMG9yZ2FuaWMlMjBzaGFwZXMlMjBtaW5pbWFsJTIwbmV1dHJhbCUyMGNvbG9yc3xlbnwwfHx8fDE3Njg4ODY3MjF8MA&ixlib=rb-4.1.0&q=85",
+          "alt": "Abstract organic podium with fern shadows",
+          "usage": "Landing page hero section (right side)"
+        },
+        "auth_side": {
+          "url": "https://images.unsplash.com/photo-1512428813834-c702c7702b78?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTB8MHwxfHNlYXJjaHwxfHxtaW5pbWFsaXN0JTIwd29ya3NwYWNlJTIwZGVzayUyMHBsYW50fGVufDB8fHx8MTc2ODg4NjcyM3ww&ixlib=rb-4.1.0&q=85",
+          "alt": "Minimalist workspace with bonsai",
+          "usage": "Login/Register page side panel"
+        },
+        "avatars": [
+          "https://images.unsplash.com/photo-1755190897791-7040dfdb988f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTJ8MHwxfHNlYXJjaHwxfHxkaXZlcnNlJTIwcHJvZmVzc2lvbmFsJTIwaGVhZHNob3RzJTIwc21pbGluZ3xlbnwwfHx8fDE3Njg4ODY3MjR8MA&ixlib=rb-4.1.0&q=85",
+          "https://images.unsplash.com/photo-1675186914580-94356f7c012c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTJ8MHwxfHNlYXJjaHw0fHxkaXZlcnNlJTIwcHJvZmVzc2lvbmFsJTIwaGVhZHNob3RzJTIwc21pbGluZ3xlbnwwfHx8fDE3Njg4ODY3MjR8MA&ixlib=rb-4.1.0&q=85"
+        ]
+      },
+      "icons_library": "lucide-react"
+    },
+    "instructions_to_main_agent": {
+      "general": "Follow the 'Organic Intelligence' theme. Avoid generic SaaS templates. Use the specified color palette strictly.",
+      "pages": {
+        "landing": "Use the 'Tetris Grid'. Hero section must be emotional, not just functional. Use the abstract organic image.",
+        "auth": "Split screen. Left: Form (clean, minimal). Right: Image (Bonsai workspace) with a quote overlay.",
+        "dashboard": "Clean, sidebar layout. Glassmorphism sidebar. Main content area should have a subtle card effect.",
+        "chat": "The core experience. Focus on typography and spacing. Message bubbles should feel tactile.",
+        "profile": "Mask the email (d****@gmail.com). Use a clean form layout for editing.",
+        "settings": "Allow editing the system prompt. Use a large text area with monospace font for the prompt."
+      },
+      "components": {
+        "shadcn": "Customize all Shadcn components to match the 'Organic' theme (rounded corners, specific colors).",
+        "toast": "Use Sonner for notifications."
+      },
+      "testing": "Add data-testid to all interactive elements (buttons, inputs, links)."
+    },
+    "universal_guidelines": [
+      "Do not use gradients for text or buttons.",
+      "Ensure all text has sufficient contrast.",
+      "Use 'Manrope' for UI text and 'Outfit' for headings.",
+      "Implement a Dark Mode toggle.",
+      "All interface text must be in Spanish."
+    ]
+  }
+}
