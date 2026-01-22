@@ -1,0 +1,13 @@
+{
+  "name": "organic-intelligence",
+  "version": "1.0.0",
+  "description": "Aplicación web con IA - Organic Intelligence",
+  "scripts": {
+    "start:frontend": "cd frontend && yarn start",
+    "start:backend": "cd backend && python -m uvicorn server:app --host 0.0.0.0 --port 8001 --reload",
+    "build": "cd frontend && yarn build",
+    "install:all": "cd frontend && yarn install && cd ../backend && pip install -r requirements.txt"
+  },
+  "author": "",
+  "license": "MIT"
+}
