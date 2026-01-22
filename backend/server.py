@@ -2,7 +2,6 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
@@ -12,19 +11,14 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import jwt
 import bcrypt
+import httpx
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-try:
-    client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
-    db = client[os.environ.get('DB_NAME', 'organic_intelligence')]
-except Exception as e:
-    print(f"Error connecting to MongoDB: {e}")
-    raise
+# Firebase Realtime Database Config
+FIREBASE_DB_URL = os.environ.get('FIREBASE_DB_URL', 'https://hypnotic-camp-479405-g2-default-rtdb.firebaseio.com')
 
 # JWT Config
 JWT_SECRET = os.environ.get('JWT_SECRET', 'default-secret-key')
@@ -49,6 +43,52 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# ============ FIREBASE HELPER FUNCTIONS ============
+
+async def firebase_get(path: str):
+    """Get data from Firebase"""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{FIREBASE_DB_URL}/{path}.json")
+        if response.status_code == 200:
+            return response.json()
+        return None
+
+async def firebase_set(path: str, data: dict):
+    """Set data in Firebase"""
+    async with httpx.AsyncClient() as client:
+        response = await client.put(f"{FIREBASE_DB_URL}/{path}.json", json=data)
+        return response.status_code == 200
+
+async def firebase_push(path: str, data: dict):
+    """Push data to Firebase (auto-generate ID)"""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(f"{FIREBASE_DB_URL}/{path}.json", json=data)
+        if response.status_code == 200:
+            return response.json().get('name')
+        return None
+
+async def firebase_update(path: str, data: dict):
+    """Update data in Firebase"""
+    async with httpx.AsyncClient() as client:
+        response = await client.patch(f"{FIREBASE_DB_URL}/{path}.json", json=data)
+        return response.status_code == 200
+
+async def firebase_delete(path: str):
+    """Delete data from Firebase"""
+    async with httpx.AsyncClient() as client:
+        response = await client.delete(f"{FIREBASE_DB_URL}/{path}.json")
+        return response.status_code == 200
+
+async def firebase_find_by_field(collection: str, field: str, value: str):
+    """Find document by field value"""
+    data = await firebase_get(collection)
+    if data:
+        for doc_id, doc in data.items():
+            if doc.get(field) == value:
+                doc['_firebase_id'] = doc_id
+                return doc
+    return None
 
 # ============ MODELS ============
 
@@ -84,7 +124,7 @@ class MessageCreate(BaseModel):
 class MessageResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
-    role: str  # "user" or "assistant"
+    role: str
     content: str
     timestamp: str
 
@@ -104,7 +144,7 @@ class SettingsResponse(BaseModel):
 
 class FeedbackCreate(BaseModel):
     message_id: str
-    feedback_type: str  # "positive" or "negative"
+    feedback_type: str
     correction: Optional[str] = None
 
 # ============ HELPER FUNCTIONS ============
@@ -152,7 +192,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     payload = decode_token(credentials.credentials)
     user_id = payload.get("sub")
     
-    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    user = await firebase_find_by_field("users", "id", user_id)
     if not user:
         raise HTTPException(status_code=401, detail="Usuario no encontrado")
     
@@ -181,7 +221,7 @@ async def register(user_data: UserCreate):
     """Register a new user"""
     try:
         # Check if email exists
-        existing = await db.users.find_one({"email": user_data.email.lower()})
+        existing = await firebase_find_by_field("users", "email", user_data.email.lower())
         if existing:
             raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado")
         
@@ -199,7 +239,10 @@ async def register(user_data: UserCreate):
             "updated_at": now
         }
         
-        await db.users.insert_one(user_doc)
+        # Save to Firebase
+        firebase_id = await firebase_push("users", user_doc)
+        if not firebase_id:
+            raise HTTPException(status_code=500, detail="Error al crear usuario")
         
         # Create token
         token = create_token(user_id)
@@ -218,7 +261,7 @@ async def register(user_data: UserCreate):
 async def login(credentials: UserLogin):
     """Login user"""
     try:
-        user = await db.users.find_one({"email": credentials.email.lower()}, {"_id": 0})
+        user = await firebase_find_by_field("users", "email", credentials.email.lower())
         
         if not user or not verify_password(credentials.password, user["password_hash"]):
             raise HTTPException(status_code=401, detail="Credenciales inválidas")
@@ -245,21 +288,28 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 @api_router.put("/users/profile", response_model=UserResponse)
 async def update_profile(update_data: UserUpdate, current_user: dict = Depends(get_current_user)):
     """Update user profile"""
-    update_fields = {}
-    
-    if update_data.name:
-        update_fields["name"] = update_data.name
-    
-    if update_fields:
-        update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
-        await db.users.update_one(
-            {"id": current_user["id"]},
-            {"$set": update_fields}
-        )
-    
-    # Get updated user
-    updated_user = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
-    return format_user_response(updated_user)
+    try:
+        firebase_id = current_user.get('_firebase_id')
+        if not firebase_id:
+            raise HTTPException(status_code=500, detail="Error interno")
+        
+        update_fields = {}
+        
+        if update_data.name:
+            update_fields["name"] = update_data.name
+        
+        if update_fields:
+            update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
+            await firebase_update(f"users/{firebase_id}", update_fields)
+        
+        # Get updated user
+        updated_user = await firebase_find_by_field("users", "id", current_user["id"])
+        return format_user_response(updated_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in update_profile: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 # ============ SETTINGS ROUTES ============
 
@@ -273,69 +323,103 @@ async def get_settings(current_user: dict = Depends(get_current_user)):
 @api_router.put("/settings", response_model=SettingsResponse)
 async def update_settings(settings: SettingsUpdate, current_user: dict = Depends(get_current_user)):
     """Update user settings (system prompt)"""
-    await db.users.update_one(
-        {"id": current_user["id"]},
-        {"$set": {
+    try:
+        firebase_id = current_user.get('_firebase_id')
+        if not firebase_id:
+            raise HTTPException(status_code=500, detail="Error interno")
+        
+        await firebase_update(f"users/{firebase_id}", {
             "system_prompt": settings.system_prompt,
             "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
-    return SettingsResponse(system_prompt=settings.system_prompt)
+        })
+        return SettingsResponse(system_prompt=settings.system_prompt)
+    except Exception as e:
+        logger.error(f"Error in update_settings: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 # ============ CHAT ROUTES ============
 
 @api_router.get("/chat/conversations", response_model=List[ConversationResponse])
 async def get_conversations(current_user: dict = Depends(get_current_user)):
     """Get all conversations for current user"""
-    conversations = await db.conversations.find(
-        {"user_id": current_user["id"]},
-        {"_id": 0}
-    ).sort("updated_at", -1).to_list(100)
-    
-    return conversations
+    try:
+        all_convs = await firebase_get("conversations")
+        if not all_convs:
+            return []
+        
+        user_convs = []
+        for conv_id, conv in all_convs.items():
+            if conv.get("user_id") == current_user["id"]:
+                conv['id'] = conv.get('id', conv_id)
+                if 'messages' not in conv:
+                    conv['messages'] = []
+                user_convs.append(ConversationResponse(**conv))
+        
+        # Sort by updated_at descending
+        user_convs.sort(key=lambda x: x.updated_at, reverse=True)
+        return user_convs[:100]
+    except Exception as e:
+        logger.error(f"Error in get_conversations: {e}")
+        return []
 
 @api_router.post("/chat/conversations", response_model=ConversationResponse)
 async def create_conversation(current_user: dict = Depends(get_current_user)):
     """Create a new conversation"""
-    conversation_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    
-    conversation = {
-        "id": conversation_id,
-        "user_id": current_user["id"],
-        "messages": [],
-        "created_at": now,
-        "updated_at": now
-    }
-    
-    await db.conversations.insert_one(conversation)
-    
-    return ConversationResponse(**conversation)
+    try:
+        conversation_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        
+        conversation = {
+            "id": conversation_id,
+            "user_id": current_user["id"],
+            "messages": [],
+            "created_at": now,
+            "updated_at": now
+        }
+        
+        await firebase_set(f"conversations/{conversation_id}", conversation)
+        
+        return ConversationResponse(**conversation)
+    except Exception as e:
+        logger.error(f"Error in create_conversation: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 @api_router.get("/chat/conversations/{conversation_id}", response_model=ConversationResponse)
 async def get_conversation(conversation_id: str, current_user: dict = Depends(get_current_user)):
     """Get a specific conversation"""
-    conversation = await db.conversations.find_one(
-        {"id": conversation_id, "user_id": current_user["id"]},
-        {"_id": 0}
-    )
-    
-    if not conversation:
-        raise HTTPException(status_code=404, detail="Conversación no encontrada")
-    
-    return ConversationResponse(**conversation)
+    try:
+        conversation = await firebase_get(f"conversations/{conversation_id}")
+        
+        if not conversation or conversation.get("user_id") != current_user["id"]:
+            raise HTTPException(status_code=404, detail="Conversación no encontrada")
+        
+        if 'messages' not in conversation:
+            conversation['messages'] = []
+        
+        return ConversationResponse(**conversation)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in get_conversation: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 @api_router.delete("/chat/conversations/{conversation_id}")
 async def delete_conversation(conversation_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a conversation"""
-    result = await db.conversations.delete_one(
-        {"id": conversation_id, "user_id": current_user["id"]}
-    )
-    
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Conversación no encontrada")
-    
-    return {"message": "Conversación eliminada"}
+    try:
+        conversation = await firebase_get(f"conversations/{conversation_id}")
+        
+        if not conversation or conversation.get("user_id") != current_user["id"]:
+            raise HTTPException(status_code=404, detail="Conversación no encontrada")
+        
+        await firebase_delete(f"conversations/{conversation_id}")
+        
+        return {"message": "Conversación eliminada"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in delete_conversation: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 @api_router.post("/chat/conversations/{conversation_id}/messages", response_model=MessageResponse)
 async def send_message(
@@ -344,112 +428,117 @@ async def send_message(
     current_user: dict = Depends(get_current_user)
 ):
     """Send a message and get AI response"""
-    # Get conversation
-    conversation = await db.conversations.find_one(
-        {"id": conversation_id, "user_id": current_user["id"]},
-        {"_id": 0}
-    )
-    
-    if not conversation:
-        raise HTTPException(status_code=404, detail="Conversación no encontrada")
-    
-    # Create user message
-    user_msg_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    
-    user_message = {
-        "id": user_msg_id,
-        "role": "user",
-        "content": message.content,
-        "timestamp": now
-    }
-    
-    # Add user message to conversation
-    await db.conversations.update_one(
-        {"id": conversation_id},
-        {
-            "$push": {"messages": user_message},
-            "$set": {"updated_at": now}
-        }
-    )
-    
-    # Get AI response
     try:
-        system_prompt = current_user.get("system_prompt", DEFAULT_SYSTEM_PROMPT)
+        # Get conversation
+        conversation = await firebase_get(f"conversations/{conversation_id}")
         
-        # Create chat instance
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"conv-{conversation_id}-{current_user['id']}",
-            system_message=system_prompt
-        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        if not conversation or conversation.get("user_id") != current_user["id"]:
+            raise HTTPException(status_code=404, detail="Conversación no encontrada")
         
-        # Build conversation history for context
-        for msg in conversation.get("messages", [])[-10:]:  # Last 10 messages for context
-            if msg["role"] == "user":
-                await chat.send_message(UserMessage(text=msg["content"]))
+        # Ensure messages array exists
+        if 'messages' not in conversation:
+            conversation['messages'] = []
         
-        # Send current message
-        ai_response = await chat.send_message(UserMessage(text=message.content))
+        # Create user message
+        user_msg_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
         
-    except Exception as e:
-        logger.error(f"Error getting AI response: {e}")
-        ai_response = "Lo siento, hubo un error al procesar tu mensaje. Por favor, intenta de nuevo."
-    
-    # Create AI message
-    ai_msg_id = str(uuid.uuid4())
-    ai_timestamp = datetime.now(timezone.utc).isoformat()
-    
-    ai_message = {
-        "id": ai_msg_id,
-        "role": "assistant",
-        "content": ai_response,
-        "timestamp": ai_timestamp
-    }
-    
-    # Add AI message to conversation
-    await db.conversations.update_one(
-        {"id": conversation_id},
-        {
-            "$push": {"messages": ai_message},
-            "$set": {"updated_at": ai_timestamp}
+        user_message = {
+            "id": user_msg_id,
+            "role": "user",
+            "content": message.content,
+            "timestamp": now
         }
-    )
-    
-    # Save interaction for learning/fine-tuning
-    await db.interactions.insert_one({
-        "id": str(uuid.uuid4()),
-        "user_id": current_user["id"],
-        "conversation_id": conversation_id,
-        "user_message": message.content,
-        "ai_response": ai_response,
-        "system_prompt": current_user.get("system_prompt", DEFAULT_SYSTEM_PROMPT),
-        "timestamp": ai_timestamp
-    })
-    
-    return MessageResponse(**ai_message)
+        
+        # Add user message to conversation
+        conversation['messages'].append(user_message)
+        
+        # Get AI response
+        try:
+            system_prompt = current_user.get("system_prompt", DEFAULT_SYSTEM_PROMPT)
+            
+            # Create chat instance
+            chat = LlmChat(
+                api_key=EMERGENT_LLM_KEY,
+                session_id=f"conv-{conversation_id}-{current_user['id']}",
+                system_message=system_prompt
+            ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+            
+            # Build conversation history for context
+            for msg in conversation['messages'][-10:]:
+                if msg["role"] == "user":
+                    await chat.send_message(UserMessage(text=msg["content"]))
+            
+            # Send current message
+            ai_response = await chat.send_message(UserMessage(text=message.content))
+            
+        except Exception as e:
+            logger.error(f"Error getting AI response: {e}")
+            ai_response = "Lo siento, hubo un error al procesar tu mensaje. Por favor, intenta de nuevo."
+        
+        # Create AI message
+        ai_msg_id = str(uuid.uuid4())
+        ai_timestamp = datetime.now(timezone.utc).isoformat()
+        
+        ai_message = {
+            "id": ai_msg_id,
+            "role": "assistant",
+            "content": ai_response,
+            "timestamp": ai_timestamp
+        }
+        
+        # Add AI message to conversation
+        conversation['messages'].append(ai_message)
+        conversation['updated_at'] = ai_timestamp
+        
+        # Update conversation in Firebase
+        await firebase_set(f"conversations/{conversation_id}", conversation)
+        
+        # Save interaction for learning/fine-tuning
+        interaction_id = str(uuid.uuid4())
+        await firebase_set(f"interactions/{interaction_id}", {
+            "id": interaction_id,
+            "user_id": current_user["id"],
+            "conversation_id": conversation_id,
+            "user_message": message.content,
+            "ai_response": ai_response,
+            "system_prompt": current_user.get("system_prompt", DEFAULT_SYSTEM_PROMPT),
+            "timestamp": ai_timestamp
+        })
+        
+        return MessageResponse(**ai_message)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in send_message: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 @api_router.post("/chat/feedback")
 async def submit_feedback(feedback: FeedbackCreate, current_user: dict = Depends(get_current_user)):
     """Submit feedback for AI learning"""
-    feedback_doc = {
-        "id": str(uuid.uuid4()),
-        "user_id": current_user["id"],
-        "message_id": feedback.message_id,
-        "feedback_type": feedback.feedback_type,
-        "correction": feedback.correction,
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.feedback.insert_one(feedback_doc)
-    
-    return {"message": "Gracias por tu retroalimentación"}
+    try:
+        feedback_id = str(uuid.uuid4())
+        feedback_doc = {
+            "id": feedback_id,
+            "user_id": current_user["id"],
+            "message_id": feedback.message_id,
+            "feedback_type": feedback.feedback_type,
+            "correction": feedback.correction,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await firebase_set(f"feedback/{feedback_id}", feedback_doc)
+        
+        return {"message": "Gracias por tu retroalimentación"}
+    except Exception as e:
+        logger.error(f"Error in submit_feedback: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 # ============ STATUS ROUTES ============
 
 @api_router.get("/")
 async def root():
-    return {"message": "Organic Intelligence API", "status": "online"}
+    return {"message": "Organic Intelligence API", "status": "online", "database": "Firebase"}
 
 @api_router.get("/health")
 async def health_check():
@@ -466,7 +555,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
