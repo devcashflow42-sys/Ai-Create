@@ -234,11 +234,6 @@ async def login(credentials: UserLogin):
     except Exception as e:
         logger.error(f"Error in login: {e}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
-    
-    return TokenResponse(
-        access_token=token,
-        user=format_user_response(user)
-    )
 
 @api_router.get("/auth/me", response_model=UserResponse)
 async def get_me(current_user: dict = Depends(get_current_user)):
