@@ -24,12 +24,14 @@ services:
   - type: web
     name: organic-frontend
     env: static
-    buildCommand: rm -f package-lock.json && yarn install && yarn build
+    buildCommand: rm -f package-lock.json && yarn install --production=false && yarn build
     staticPublishPath: ./build
     rootDir: frontend
     envVars:
       - key: REACT_APP_BACKEND_URL
         sync: false
+      - key: CI
+        value: "false"
     routes:
       - type: rewrite
         source: /*
