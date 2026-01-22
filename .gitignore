@@ -64,3 +64,7 @@ package-lock.json
 *.tar.gz
 *.tar
 *.tgz
+-e 
+# Environment files
+*.env
+*.env.*
