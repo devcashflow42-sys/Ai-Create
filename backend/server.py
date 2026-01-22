@@ -182,32 +182,37 @@ async def register(user_data: UserCreate):
     try:
         # Check if email exists
         existing = await db.users.find_one({"email": user_data.email.lower()})
-    if existing:
-        raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado")
-    
-    # Create user
-    user_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    
-    user_doc = {
-        "id": user_id,
-        "name": user_data.name,
-        "email": user_data.email.lower(),
-        "password_hash": hash_password(user_data.password),
-        "system_prompt": DEFAULT_SYSTEM_PROMPT,
-        "created_at": now,
-        "updated_at": now
-    }
-    
-    await db.users.insert_one(user_doc)
-    
-    # Create token
-    token = create_token(user_id)
-    
-    return TokenResponse(
-        access_token=token,
-        user=format_user_response(user_doc)
-    )
+        if existing:
+            raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado")
+        
+        # Create user
+        user_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        
+        user_doc = {
+            "id": user_id,
+            "name": user_data.name,
+            "email": user_data.email.lower(),
+            "password_hash": hash_password(user_data.password),
+            "system_prompt": DEFAULT_SYSTEM_PROMPT,
+            "created_at": now,
+            "updated_at": now
+        }
+        
+        await db.users.insert_one(user_doc)
+        
+        # Create token
+        token = create_token(user_id)
+        
+        return TokenResponse(
+            access_token=token,
+            user=format_user_response(user_doc)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in register: {e}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: UserLogin):
