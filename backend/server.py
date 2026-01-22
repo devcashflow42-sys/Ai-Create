@@ -179,8 +179,9 @@ Sé profesional pero accesible, y siempre trata de dar respuestas útiles y bien
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user_data: UserCreate):
     """Register a new user"""
-    # Check if email exists
-    existing = await db.users.find_one({"email": user_data.email.lower()})
+    try:
+        # Check if email exists
+        existing = await db.users.find_one({"email": user_data.email.lower()})
     if existing:
         raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado")
     
