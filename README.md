@@ -1,70 +1,63 @@
 # 🌿 Organic Intelligence
 
-Aplicación web con Inteligencia Artificial integrada.
+## 🚀 Despliegue Rápido en Render.com (GRATIS)
 
-## 🚀 Inicio Rápido
+### Paso 1: Sube tu código a GitHub
+1. Crea un repositorio en GitHub
+2. Sube todos los archivos
 
-### Paso 1: Instalar dependencias
+### Paso 2: Crea cuenta en Render
+1. Ve a [render.com](https://render.com)
+2. Regístrate con GitHub
 
-**Backend (Python):**
-```bash
-cd backend
-pip install -r requirements.txt
-pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
-```
+### Paso 3: Crear Base de Datos MongoDB
+1. Ve a [MongoDB Atlas](https://cloud.mongodb.com) (gratis)
+2. Crea un cluster gratuito
+3. Copia la URL de conexión
 
-**Frontend (Node.js):**
-```bash
-cd frontend
-yarn install
-```
+### Paso 4: Desplegar Backend
+1. En Render, clic "New" → "Web Service"
+2. Conecta tu repositorio de GitHub
+3. Configuración:
+   - **Name:** organic-backend
+   - **Root Directory:** backend
+   - **Runtime:** Python 3
+   - **Build Command:** `pip install -r requirements.txt && pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/`
+   - **Start Command:** `uvicorn server:app --host 0.0.0.0 --port $PORT`
+4. Variables de entorno:
+   ```
+   MONGO_URL = tu-url-de-mongodb-atlas
+   DB_NAME = organic_intelligence
+   JWT_SECRET = clave-secreta-muy-segura
+   EMERGENT_LLM_KEY = sk-emergent-fA4A5AdFf2d520a826
+   CORS_ORIGINS = *
+   ```
+5. Clic "Create Web Service"
+6. **Copia la URL del backend** (ej: https://organic-backend.onrender.com)
 
-### Paso 2: Configurar variables de entorno
+### Paso 5: Desplegar Frontend
+1. En Render, clic "New" → "Static Site"
+2. Conecta el mismo repositorio
+3. Configuración:
+   - **Name:** organic-frontend
+   - **Root Directory:** frontend
+   - **Build Command:** `yarn install && yarn build`
+   - **Publish Directory:** build
+4. Variables de entorno:
+   ```
+   REACT_APP_BACKEND_URL = https://organic-backend.onrender.com
+   ```
+   (usa la URL de tu backend del paso anterior)
+5. Clic "Create Static Site"
 
-**Backend** - Crea el archivo `backend/.env`:
-```env
-MONGO_URL=mongodb://localhost:27017
-DB_NAME=organic_intelligence
-JWT_SECRET=tu-clave-secreta-segura-aqui
-EMERGENT_LLM_KEY=tu-api-key-aqui
-CORS_ORIGINS=http://localhost:3000
-```
-
-**Frontend** - Crea el archivo `frontend/.env`:
-```env
-REACT_APP_BACKEND_URL=http://localhost:8001
-```
-
-### Paso 3: Iniciar la aplicación
-
-**Opción A - Script automático:**
-```bash
-# Linux/Mac
-chmod +x start.sh
-./start.sh
-
-# Windows
-start.bat
-```
-
-**Opción B - Manual:**
-
-Terminal 1 (Backend):
-```bash
-cd backend
-python -m uvicorn server:app --host 0.0.0.0 --port 8001 --reload
-```
-
-Terminal 2 (Frontend):
-```bash
-cd frontend
-yarn start
-```
-
-### Paso 4: Abrir en navegador
-
-- **Aplicación:** http://localhost:3000
-- **API Docs:** http://localhost:8001/docs
+### Paso 6: Configurar Dominio Propio
+1. En tu Static Site de Render
+2. Ve a "Settings" → "Custom Domains"
+3. Agrega tu dominio
+4. Configura DNS en tu proveedor de dominio:
+   - Tipo: CNAME
+   - Nombre: www (o @)
+   - Valor: tu-sitio.onrender.com
 
 ---
 
@@ -73,74 +66,41 @@ yarn start
 ```
 organic-intelligence/
 ├── backend/
-│   ├── server.py          # API FastAPI
-│   ├── requirements.txt   # Dependencias Python
-│   └── .env              # Variables de entorno
+│   ├── server.py
+│   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── App.js        # Componente principal
-│   │   ├── pages/        # Páginas (Login, Chat, etc.)
-│   │   └── context/      # Contextos (Auth, Theme)
-│   ├── package.json
-│   └── .env
-├── start.sh              # Script inicio Linux/Mac
-├── start.bat             # Script inicio Windows
-└── README.md
+│   ├── public/
+│   └── package.json
+└── render.yaml
 ```
 
 ---
 
-## 🔑 Obtener API Key
+## 🔑 Obtener API Keys
 
-1. Regístrate en [Emergent](https://emergent.sh)
-2. Ve a **Profile → Universal Key**
-3. Copia la key y pégala en `backend/.env`
+### MongoDB Atlas (Gratis)
+1. Ve a [cloud.mongodb.com](https://cloud.mongodb.com)
+2. Crea cuenta gratuita
+3. Crea un cluster M0 (gratis)
+4. En "Database Access" crea un usuario
+5. En "Network Access" permite 0.0.0.0/0
+6. En "Connect" copia la connection string
 
----
-
-## 🌐 Desplegar en Producción
-
-### Opción 1: Railway (Recomendado - Gratis)
-
-1. Crea cuenta en [Railway](https://railway.app)
-2. Conecta tu repositorio de GitHub
-3. Agrega las variables de entorno
-4. Railway desplegará automáticamente
-
-### Opción 2: Render
-
-1. Crea cuenta en [Render](https://render.com)
-2. Crea un "Web Service" para el backend
-3. Crea un "Static Site" para el frontend
-4. Configura las variables de entorno
-
-### Opción 3: VPS (DigitalOcean, Linode, etc.)
-
-```bash
-# En tu servidor
-git clone tu-repositorio
-cd organic-intelligence
-./start.sh
-```
+### Emergent LLM Key
+Ya incluida: `sk-emergent-fA4A5AdFf2d520a826`
 
 ---
 
 ## ❓ Problemas Comunes
 
-### La página aparece en blanco
-- Verifica que el backend esté corriendo en puerto 8001
-- Verifica que `REACT_APP_BACKEND_URL` apunte al backend correcto
-- Revisa la consola del navegador (F12) para ver errores
-
-### Error de conexión a MongoDB
-- Instala MongoDB localmente o usa MongoDB Atlas (gratis)
-- Verifica la URL en `MONGO_URL`
+### Página en blanco
+- Verifica que REACT_APP_BACKEND_URL apunte a tu backend
+- Revisa los logs en Render
 
 ### Error de CORS
-- Asegúrate que `CORS_ORIGINS` incluya la URL de tu frontend
+- Asegúrate que CORS_ORIGINS incluya la URL de tu frontend
 
----
-
-## 📞 Soporte
-
-¿Problemas? Abre un issue en el repositorio.
+### Error de MongoDB
+- Verifica la URL de conexión
+- Asegúrate de permitir acceso desde cualquier IP (0.0.0.0/0)

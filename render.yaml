@@ -1,0 +1,36 @@
+services:
+  # Backend
+  - type: web
+    name: organic-backend
+    env: python
+    buildCommand: pip install -r requirements.txt && pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    envVars:
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: organic_intelligence
+      - key: JWT_SECRET
+        generateValue: true
+      - key: EMERGENT_LLM_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+  # Frontend
+  - type: web
+    name: organic-frontend
+    env: static
+    buildCommand: yarn install && yarn build
+    staticPublishPath: ./build
+    rootDir: frontend
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
