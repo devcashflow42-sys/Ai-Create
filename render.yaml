@@ -24,7 +24,7 @@ services:
   - type: web
     name: organic-frontend
     env: static
-    buildCommand: yarn install && yarn build
+    buildCommand: rm -f package-lock.json && yarn install && yarn build
     staticPublishPath: ./build
     rootDir: frontend
     envVars:
