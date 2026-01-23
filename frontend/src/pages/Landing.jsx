@@ -202,7 +202,7 @@ const Landing = () => {
             </p>
           </motion.div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
@@ -210,13 +210,17 @@ const Landing = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="p-8 bg-card rounded-2xl border border-border card-hover"
+                onClick={() => feature.link && navigate(feature.link)}
+                className={`p-8 bg-card rounded-2xl border border-border card-hover ${feature.link ? 'cursor-pointer hover:border-primary/50' : ''}`}
               >
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-6">
                   {feature.icon}
                 </div>
                 <h3 className="text-xl font-semibold font-['Outfit'] mb-3">{feature.title}</h3>
                 <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+                {feature.link && (
+                  <p className="text-primary text-sm mt-4 font-medium">Ver documentación →</p>
+                )}
               </motion.div>
             ))}
           </div>
