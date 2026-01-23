@@ -10,6 +10,7 @@ import Register from './pages/Register';
 import Chat from './pages/Chat';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
+import Docs from './pages/Docs';
 
 import './App.css';
 
