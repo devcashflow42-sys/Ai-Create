@@ -209,7 +209,8 @@ def format_user_response(user: dict) -> UserResponse:
         email=user["email"],
         masked_email=mask_email(user["email"]),
         created_at=user["created_at"],
-        system_prompt=user.get("system_prompt")
+        system_prompt=user.get("system_prompt"),
+        profile_image=user.get("profile_image")
     )
 
 DEFAULT_SYSTEM_PROMPT = """Eres un asistente de inteligencia artificial amigable y útil llamado "Brainyx". 
