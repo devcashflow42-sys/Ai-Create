@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
-import { MessageSquare, Settings, User, Sparkles, Brain, Shield } from 'lucide-react';
+import { MessageSquare, Settings, User, Sparkles, Brain, Shield, Book, Code, Key } from 'lucide-react';
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -28,6 +28,18 @@ const Landing = () => {
       icon: <Shield className="w-6 h-6" />,
       title: 'Seguro y Privado',
       description: 'Tus datos están protegidos con las mejores prácticas de seguridad.'
+    },
+    {
+      icon: <Book className="w-6 h-6" />,
+      title: 'Documentación Completa',
+      description: 'Guías detalladas para integrar Brainyx API en tu aplicación, web o servicio.',
+      link: '/docs'
+    },
+    {
+      icon: <Key className="w-6 h-6" />,
+      title: 'API Key para Desarrolladores',
+      description: 'Genera tu API Key y usa Brainyx en cualquier aplicación, HTTP, JavaScript, Python y más.',
+      link: '/docs'
     }
   ];
 
