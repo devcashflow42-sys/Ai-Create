@@ -302,6 +302,9 @@ async def update_profile(update_data: UserUpdate, current_user: dict = Depends(g
         if update_data.name:
             update_fields["name"] = update_data.name
         
+        if update_data.profile_image:
+            update_fields["profile_image"] = update_data.profile_image
+        
         if update_fields:
             update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
             await firebase_update(f"users/{firebase_id}", update_fields)
