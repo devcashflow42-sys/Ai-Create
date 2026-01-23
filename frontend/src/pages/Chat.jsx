@@ -341,8 +341,12 @@ const Chat = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full" data-testid="user-menu-btn">
-                <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
-                  <User className="w-4 h-4 text-secondary-foreground" />
+                <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                  {user?.profile_image ? (
+                    <img src={user.profile_image} alt="Perfil" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-4 h-4 text-secondary-foreground" />
+                  )}
                 </div>
               </Button>
             </DropdownMenuTrigger>
