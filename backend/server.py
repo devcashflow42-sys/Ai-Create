@@ -29,7 +29,7 @@ JWT_EXPIRATION_HOURS = int(os.environ.get('JWT_EXPIRATION_HOURS', 24))
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 
 # Create the main app
-app = FastAPI(title="Organic Intelligence API")
+app = FastAPI(title="Brainyx API")
 
 # Create router with /api prefix
 api_router = APIRouter(prefix="/api")
@@ -209,7 +209,7 @@ def format_user_response(user: dict) -> UserResponse:
         system_prompt=user.get("system_prompt")
     )
 
-DEFAULT_SYSTEM_PROMPT = """Eres un asistente de inteligencia artificial amigable y útil llamado "Organic Intelligence". 
+DEFAULT_SYSTEM_PROMPT = """Eres un asistente de inteligencia artificial amigable y útil llamado "Brainyx". 
 Tu objetivo es ayudar a los usuarios de manera clara, concisa y empática.
 Responde siempre en español a menos que el usuario te hable en otro idioma.
 Sé profesional pero accesible, y siempre trata de dar respuestas útiles y bien estructuradas."""
@@ -538,7 +538,7 @@ async def submit_feedback(feedback: FeedbackCreate, current_user: dict = Depends
 
 @api_router.get("/")
 async def root():
-    return {"message": "Organic Intelligence API", "status": "online", "database": "Firebase"}
+    return {"message": "Brainyx API", "status": "online", "database": "Firebase"}
 
 @api_router.get("/health")
 async def health_check():
