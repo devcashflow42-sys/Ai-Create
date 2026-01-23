@@ -53,6 +53,14 @@ const Landing = () => {
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-4"
             >
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/docs')}
+                className="rounded-full hidden md:flex"
+                data-testid="docs-nav-btn"
+              >
+                Documentación
+              </Button>
               {isAuthenticated ? (
                 <Button 
                   onClick={() => navigate('/chat')}
