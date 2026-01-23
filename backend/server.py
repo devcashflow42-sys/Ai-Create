@@ -109,9 +109,12 @@ class UserResponse(BaseModel):
     masked_email: str
     created_at: str
     system_prompt: Optional[str] = None
+    profile_image: Optional[str] = None
 
 class UserUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100)
+    profile_image: Optional[str] = Field(None, description="URL de imagen o base64")
+
 
 class TokenResponse(BaseModel):
     access_token: str
