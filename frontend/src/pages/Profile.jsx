@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
@@ -8,7 +8,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
-import { ArrowLeft, User, Mail, Calendar, Save } from 'lucide-react';
+import { ArrowLeft, User, Mail, Calendar, Save, Camera, Upload } from 'lucide-react';
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -16,7 +16,25 @@ const Profile = () => {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const [name, setName] = useState(user?.name || '');
+  const [profileImage, setProfileImage] = useState(user?.profile_image || '');
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 500000) { // 500KB max
+        toast.error('La imagen debe ser menor a 500KB');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,7 +46,12 @@ const Profile = () => {
 
     setLoading(true);
     try {
-      const response = await axios.put(`${API_URL}/users/profile`, { name: name.trim() });
+      const updateData = { name: name.trim() };
+      if (profileImage && profileImage !== user?.profile_image) {
+        updateData.profile_image = profileImage;
+      }
+      
+      const response = await axios.put(`${API_URL}/users/profile`, updateData);
       updateUser(response.data);
       toast.success('Perfil actualizado correctamente');
     } catch (error) {
@@ -48,6 +71,8 @@ const Profile = () => {
       day: 'numeric'
     });
   };
+
+  const displayImage = profileImage || user?.profile_image;
 
   return (
     <div className="min-h-screen bg-background">
@@ -72,12 +97,38 @@ const Profile = () => {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-8"
         >
-          {/* Profile Header */}
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center">
-              <User className="w-10 h-10 text-secondary-foreground" />
+          {/* Profile Header with Image */}
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative group">
+              <div className="w-28 h-28 rounded-full bg-secondary flex items-center justify-center overflow-hidden border-4 border-background shadow-lg">
+                {displayImage ? (
+                  <img 
+                    src={displayImage} 
+                    alt="Perfil" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-14 h-14 text-secondary-foreground" />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 w-10 h-10 bg-primary rounded-full flex items-center justify-center text-primary-foreground shadow-lg hover:scale-110 transition-transform"
+                data-testid="upload-image-btn"
+              >
+                <Camera className="w-5 h-5" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+                data-testid="image-input"
+              />
             </div>
-            <div>
+            <div className="text-center">
               <h2 className="text-2xl font-semibold font-['Outfit']" data-testid="profile-name">
                 {user?.name}
               </h2>
@@ -92,11 +143,39 @@ const Profile = () => {
             <CardHeader>
               <CardTitle className="font-['Outfit']">Editar Perfil</CardTitle>
               <CardDescription>
-                Actualiza tu información personal
+                Actualiza tu información personal y foto de perfil
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Image URL option */}
+                <div className="space-y-2">
+                  <Label htmlFor="imageUrl">URL de Imagen (opcional)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="imageUrl"
+                      type="url"
+                      value={profileImage?.startsWith('http') ? profileImage : ''}
+                      onChange={(e) => setProfileImage(e.target.value)}
+                      className="h-12 rounded-xl flex-1"
+                      placeholder="https://ejemplo.com/mi-foto.jpg"
+                      data-testid="image-url-input"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-12 rounded-xl"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Subir
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Puedes pegar una URL o subir una imagen (máx. 500KB)
+                  </p>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="name">Nombre</Label>
                   <div className="relative">
@@ -126,7 +205,7 @@ const Profile = () => {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    El correo electrónico no puede ser modificado
+                    El correo electrónico no puede ser modificado por seguridad
                   </p>
                 </div>
 
@@ -162,7 +241,7 @@ const Profile = () => {
             <CardHeader>
               <CardTitle className="font-['Outfit']">Información de la Cuenta</CardTitle>
               <CardDescription>
-                Detalles de tu cuenta
+                Detalles de tu cuenta en Brainyx
               </CardDescription>
             </CardHeader>
             <CardContent>
