@@ -74,7 +74,7 @@ const Register = () => {
             <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
               <MessageSquare className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-xl font-['Outfit']">Organic Intelligence</span>
+            <span className="font-semibold text-xl font-['Outfit']">Brainyx</span>
           </div>
 
           <Card className="border-border shadow-none">
@@ -200,7 +200,7 @@ const Register = () => {
               <p className="text-2xl font-light font-['Outfit'] leading-relaxed mb-4">
                 "Cada conversación es una oportunidad para aprender algo nuevo."
               </p>
-              <footer className="text-white/70 text-sm">— Organic Intelligence</footer>
+              <footer className="text-white/70 text-sm">— Brainyx</footer>
             </blockquote>
           </motion.div>
         </div>

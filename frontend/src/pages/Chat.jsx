@@ -49,7 +49,7 @@ const ChatMessage = ({ message, isUser }) => (
       {!isUser && (
         <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
           <Sparkles className="w-3 h-3" />
-          <span>Organic Intelligence</span>
+          <span>Brainyx</span>
         </div>
       )}
       <p className="text-base leading-relaxed whitespace-pre-wrap">{message.content}</p>
@@ -377,7 +377,7 @@ const Chat = () => {
                   <div className="w-16 h-16 rounded-full bg-accent mx-auto flex items-center justify-center">
                     <Sparkles className="w-8 h-8 text-secondary" />
                   </div>
-                  <h2 className="text-2xl font-semibold font-['Outfit']">¡Hola! Soy Organic Intelligence</h2>
+                  <h2 className="text-2xl font-semibold font-['Outfit']">¡Hola! Soy Brainyx</h2>
                   <p className="text-muted-foreground max-w-md">
                     Estoy aquí para ayudarte. Puedes preguntarme lo que quieras y te responderé de la mejor manera posible.
                   </p>
