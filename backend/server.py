@@ -173,6 +173,13 @@ class BrainyxAPIRequest(BaseModel):
     message: str = Field(..., min_length=1)
     system_prompt: Optional[str] = None
 
+class StripeCheckoutRequest(BaseModel):
+    plan_id: str
+    origin_url: str
+
+class PaymentStatusRequest(BaseModel):
+    session_id: str
+
 # ============ HELPER FUNCTIONS ============
 
 def mask_email(email: str) -> str:
