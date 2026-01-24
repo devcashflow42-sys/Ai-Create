@@ -492,6 +492,214 @@ async def get_usage(current_user: dict = Depends(get_current_user)):
         "plan": current_user.get("plan", "free")
     }
 
+# ============ STRIPE PAYMENT ROUTES ============
+
+@api_router.post("/stripe/create-checkout-session")
+async def create_stripe_checkout(checkout_data: StripeCheckoutRequest, request: Request, current_user: dict = Depends(get_current_user)):
+    """Create a Stripe checkout session for purchasing a plan"""
+    try:
+        plan_id = checkout_data.plan_id
+        origin_url = checkout_data.origin_url
+        
+        if plan_id not in PLANS:
+            raise HTTPException(status_code=400, detail="Plan no válido")
+        
+        plan = PLANS[plan_id]
+        
+        # Build dynamic URLs
+        success_url = f"{origin_url}/settings?payment=success&session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{origin_url}/settings?payment=cancelled"
+        
+        # Initialize Stripe checkout
+        host_url = str(request.base_url)
+        webhook_url = f"{host_url}api/webhook/stripe"
+        stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+        
+        # Create checkout session with fixed server-side amount
+        checkout_request = CheckoutSessionRequest(
+            amount=float(plan["price"]),  # Amount from server-side definition
+            currency="usd",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={
+                "user_id": current_user["id"],
+                "plan_id": plan_id,
+                "credits": str(plan["credits"]),
+                "source": "brainyx_web"
+            }
+        )
+        
+        session: CheckoutSessionResponse = await stripe_checkout.create_checkout_session(checkout_request)
+        
+        # Create payment transaction record BEFORE redirect
+        transaction_id = str(uuid.uuid4())
+        await firebase_set(f"payment_transactions/{transaction_id}", {
+            "id": transaction_id,
+            "session_id": session.session_id,
+            "user_id": current_user["id"],
+            "plan_id": plan_id,
+            "amount": float(plan["price"]),
+            "currency": "usd",
+            "credits": plan["credits"],
+            "payment_status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        logger.info(f"Created checkout session {session.session_id} for user {current_user['id']}")
+        
+        return {
+            "url": session.url,
+            "session_id": session.session_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating checkout session: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al crear sesión de pago: {str(e)}")
+
+@api_router.get("/stripe/checkout-status/{session_id}")
+async def get_stripe_checkout_status(session_id: str, request: Request, current_user: dict = Depends(get_current_user)):
+    """Get the status of a Stripe checkout session and process payment if completed"""
+    try:
+        # Initialize Stripe checkout
+        host_url = str(request.base_url)
+        webhook_url = f"{host_url}api/webhook/stripe"
+        stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+        
+        # Get checkout status
+        status: CheckoutStatusResponse = await stripe_checkout.get_checkout_status(session_id)
+        
+        # Find the transaction
+        transactions = await firebase_get("payment_transactions")
+        transaction = None
+        transaction_key = None
+        
+        if transactions:
+            for key, txn in transactions.items():
+                if txn.get("session_id") == session_id:
+                    transaction = txn
+                    transaction_key = key
+                    break
+        
+        if not transaction:
+            raise HTTPException(status_code=404, detail="Transacción no encontrada")
+        
+        # Verify this transaction belongs to the current user
+        if transaction.get("user_id") != current_user["id"]:
+            raise HTTPException(status_code=403, detail="No autorizado")
+        
+        # If payment is successful and not already processed
+        if status.payment_status == "paid" and transaction.get("payment_status") != "completed":
+            # Update transaction status
+            await firebase_update(f"payment_transactions/{transaction_key}", {
+                "payment_status": "completed",
+                "completed_at": datetime.now(timezone.utc).isoformat()
+            })
+            
+            # Add credits to user
+            firebase_id = current_user.get('_firebase_id')
+            current_credits = current_user.get("credits", 0)
+            new_credits = current_credits + transaction["credits"]
+            
+            await firebase_update(f"users/{firebase_id}", {
+                "credits": new_credits,
+                "plan": transaction["plan_id"],
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            })
+            
+            logger.info(f"Payment completed for user {current_user['id']}, added {transaction['credits']} credits")
+            
+            return {
+                "status": status.status,
+                "payment_status": "completed",
+                "credits_added": transaction["credits"],
+                "new_balance": new_credits,
+                "plan": transaction["plan_id"]
+            }
+        
+        # If already processed
+        if transaction.get("payment_status") == "completed":
+            return {
+                "status": "complete",
+                "payment_status": "completed",
+                "credits_added": transaction["credits"],
+                "message": "Este pago ya fue procesado"
+            }
+        
+        # If expired or failed
+        if status.status == "expired":
+            await firebase_update(f"payment_transactions/{transaction_key}", {
+                "payment_status": "expired",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            })
+            return {
+                "status": "expired",
+                "payment_status": "expired"
+            }
+        
+        # Still pending
+        return {
+            "status": status.status,
+            "payment_status": status.payment_status,
+            "amount": status.amount_total / 100  # Convert cents to dollars
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error checking checkout status: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al verificar estado: {str(e)}")
+
+@api_router.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    """Handle Stripe webhooks"""
+    try:
+        body = await request.body()
+        signature = request.headers.get("Stripe-Signature")
+        
+        host_url = str(request.base_url)
+        webhook_url = f"{host_url}api/webhook/stripe"
+        stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+        
+        webhook_response = await stripe_checkout.handle_webhook(body, signature)
+        
+        if webhook_response.event_type == "checkout.session.completed":
+            session_id = webhook_response.session_id
+            metadata = webhook_response.metadata
+            
+            # Find and update the transaction
+            transactions = await firebase_get("payment_transactions")
+            if transactions:
+                for key, txn in transactions.items():
+                    if txn.get("session_id") == session_id and txn.get("payment_status") != "completed":
+                        # Update transaction
+                        await firebase_update(f"payment_transactions/{key}", {
+                            "payment_status": "completed",
+                            "completed_at": datetime.now(timezone.utc).isoformat()
+                        })
+                        
+                        # Add credits to user
+                        user = await firebase_find_by_field("users", "id", txn["user_id"])
+                        if user:
+                            firebase_id = user.get('_firebase_id')
+                            current_credits = user.get("credits", 0)
+                            new_credits = current_credits + txn["credits"]
+                            
+                            await firebase_update(f"users/{firebase_id}", {
+                                "credits": new_credits,
+                                "plan": txn["plan_id"],
+                                "updated_at": datetime.now(timezone.utc).isoformat()
+                            })
+                            
+                            logger.info(f"Webhook: Payment completed for user {txn['user_id']}, added {txn['credits']} credits")
+                        break
+        
+        return {"status": "ok"}
+        
+    except Exception as e:
+        logger.error(f"Webhook error: {e}")
+        return {"status": "error", "message": str(e)}
+
 # ============ BRAINYX PUBLIC API ============
 
 @api_router.post("/v1/chat")
