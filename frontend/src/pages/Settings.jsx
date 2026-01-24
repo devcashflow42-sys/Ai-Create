@@ -385,10 +385,20 @@ const Settings = () => {
           {/* PLANS TAB */}
           <TabsContent value="plans">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              {/* Payment checking overlay */}
+              {paymentChecking && (
+                <Card className="border-primary">
+                  <CardContent className="flex items-center justify-center py-8 gap-3">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <span className="text-lg">Verificando pago...</span>
+                  </CardContent>
+                </Card>
+              )}
+              
               <Card>
                 <CardHeader>
                   <CardTitle className="font-['Outfit']">Planes y Pagos</CardTitle>
-                  <CardDescription>Elige el plan que mejor se adapte a ti</CardDescription>
+                  <CardDescription>Elige el plan que mejor se adapte a ti. Pago seguro con Stripe.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid md:grid-cols-3 gap-4">
@@ -406,12 +416,36 @@ const Settings = () => {
                         <Button 
                           onClick={() => handlePurchasePlan(id)} 
                           className={`w-full mt-4 rounded-full ${currentPlan === id ? 'bg-green-600' : ''}`}
-                          disabled={currentPlan === id}
+                          disabled={currentPlan === id || purchaseLoading !== null}
+                          data-testid={`buy-plan-${id}`}
                         >
-                          {currentPlan === id ? <><Check className="w-4 h-4 mr-2" /> Activo</> : 'Comprar'}
+                          {purchaseLoading === id ? (
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando...</>
+                          ) : currentPlan === id ? (
+                            <><Check className="w-4 h-4 mr-2" /> Activo</>
+                          ) : (
+                            <><CreditCard className="w-4 h-4 mr-2" /> Comprar</>
+                          )}
                         </Button>
                       </div>
                     ))}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Current balance */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="font-['Outfit']">Tu Balance Actual</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between p-4 bg-accent/30 rounded-xl">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Créditos disponibles</p>
+                      <p className="text-3xl font-bold">{credits.toLocaleString()}</p>
+                      <p className="text-sm text-muted-foreground mt-1">Plan actual: <span className="font-medium capitalize">{currentPlan}</span></p>
+                    </div>
+                    <Zap className="w-10 h-10 text-secondary" />
                   </div>
                 </CardContent>
               </Card>
