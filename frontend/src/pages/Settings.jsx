@@ -27,6 +27,7 @@ const PLANS = {
 
 const Settings = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, updateUser } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const fileInputRef = useRef(null);
@@ -47,6 +48,10 @@ const Settings = () => {
   // Usage state
   const [credits, setCredits] = useState(user?.credits || 0);
   const [currentPlan, setCurrentPlan] = useState(user?.plan || 'free');
+  
+  // Payment state
+  const [purchaseLoading, setPurchaseLoading] = useState(null);
+  const [paymentChecking, setPaymentChecking] = useState(false);
 
   useEffect(() => {
     fetchApiKeys();
