@@ -209,14 +209,24 @@ const Settings = () => {
   };
 
   const handlePurchasePlan = async (planId) => {
+    setPurchaseLoading(planId);
     try {
-      const response = await axios.post(`${API_URL}/plans/purchase`, { plan_id: planId });
-      toast.success(response.data.message);
-      setCredits(response.data.credits);
-      setCurrentPlan(planId);
-      updateUser({ ...user, credits: response.data.credits, plan: planId });
+      const originUrl = window.location.origin;
+      const response = await axios.post(`${API_URL}/stripe/create-checkout-session`, {
+        plan_id: planId,
+        origin_url: originUrl
+      });
+      
+      // Redirect to Stripe Checkout
+      if (response.data.url) {
+        window.location.href = response.data.url;
+      } else {
+        throw new Error('No se recibió URL de checkout');
+      }
     } catch (error) {
-      toast.error('Error al procesar el pago');
+      console.error('Payment error:', error);
+      toast.error(error.response?.data?.detail || 'Error al iniciar el pago');
+      setPurchaseLoading(null);
     }
   };
 
