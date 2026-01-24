@@ -30,6 +30,9 @@ JWT_EXPIRATION_HOURS = int(os.environ.get('JWT_EXPIRATION_HOURS', 24))
 # LLM Config
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 
+# Stripe Config
+STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', '')
+
 # Create the main app
 app = FastAPI(title="Brainyx API")
 
