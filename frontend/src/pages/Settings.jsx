@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -14,7 +14,7 @@ import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
 import { 
   ArrowLeft, User, Key, CreditCard, Moon, Sun, Camera, Save, 
-  Plus, Trash2, Copy, Eye, EyeOff, AlertTriangle, Check, Zap
+  Plus, Trash2, Copy, Eye, EyeOff, AlertTriangle, Check, Zap, Loader2
 } from 'lucide-react';
 
 const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
