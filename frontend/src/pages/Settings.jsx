@@ -56,7 +56,67 @@ const Settings = () => {
   useEffect(() => {
     fetchApiKeys();
     fetchUsage();
-  }, []);
+    
+    // Check for payment return
+    const paymentStatus = searchParams.get('payment');
+    const sessionId = searchParams.get('session_id');
+    
+    if (paymentStatus === 'success' && sessionId) {
+      pollPaymentStatus(sessionId);
+    } else if (paymentStatus === 'cancelled') {
+      toast.info('Pago cancelado');
+      // Clean URL
+      navigate('/settings', { replace: true });
+    }
+  }, [searchParams]);
+
+  const pollPaymentStatus = async (sessionId, attempts = 0) => {
+    const maxAttempts = 5;
+    const pollInterval = 2000;
+    
+    if (attempts >= maxAttempts) {
+      setPaymentChecking(false);
+      toast.error('No se pudo verificar el pago. Revisa tu email para confirmación.');
+      navigate('/settings', { replace: true });
+      return;
+    }
+    
+    if (attempts === 0) {
+      setPaymentChecking(true);
+    }
+    
+    try {
+      const response = await axios.get(`${API_URL}/stripe/checkout-status/${sessionId}`);
+      const data = response.data;
+      
+      if (data.payment_status === 'completed') {
+        setPaymentChecking(false);
+        toast.success(`¡Pago exitoso! Se agregaron ${data.credits_added?.toLocaleString()} créditos`);
+        setCredits(data.new_balance || credits + data.credits_added);
+        setCurrentPlan(data.plan);
+        updateUser({ ...user, credits: data.new_balance, plan: data.plan });
+        navigate('/settings', { replace: true });
+        return;
+      } else if (data.status === 'expired') {
+        setPaymentChecking(false);
+        toast.error('La sesión de pago expiró. Intenta de nuevo.');
+        navigate('/settings', { replace: true });
+        return;
+      }
+      
+      // Continue polling
+      setTimeout(() => pollPaymentStatus(sessionId, attempts + 1), pollInterval);
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      if (attempts >= maxAttempts - 1) {
+        setPaymentChecking(false);
+        toast.error('Error verificando el pago');
+        navigate('/settings', { replace: true });
+      } else {
+        setTimeout(() => pollPaymentStatus(sessionId, attempts + 1), pollInterval);
+      }
+    }
+  };
 
   const fetchApiKeys = async () => {
     try {
